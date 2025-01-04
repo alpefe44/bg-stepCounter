@@ -9,7 +9,6 @@ const WeightLossTip = () => {
 
     const handleScroll = (event) => {
         const contentOffset = event.nativeEvent.contentOffset.x;
-        console.log(contentOffset);
         const index = Math.round(contentOffset / cardWidth);
         setActiveIndex(index);
 
