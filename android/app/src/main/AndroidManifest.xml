@@ -6,6 +6,8 @@
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />  
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -29,5 +31,7 @@
         <data android:scheme="com.alpefe7.fitnessapp"/>
       </intent-filter>
     </activity>
+    <service android:name="com.transistorsoft.rnbackgroundfetch.HeadlessJobService" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
+    <service android:name="com.transistorsoft.rnbackgroundfetch.RNBackgroundFetchService" android:exported="true" />
   </application>
 </manifest>

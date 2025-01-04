@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Device from 'expo-device';
-import { Alert, AppState, Platform } from 'react-native';
+import * as BackgroundFetch from 'expo-background-fetch';
+import { Alert, AppState, Platform, Dimensions } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import CircularProgress from 'react-native-circular-progress-indicator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerBackgroundTask } from '../services/StepCounterService';
+import { registerBackgroundTask, updateSteps } from '../services/StepCounterService';
 import EventEmitter from '../utils/EventEmitter';
+import WeightLossTip from '../components/WeightLossTip';
+
 
 export default function HomeScreen({ navigation }) {
 
@@ -27,32 +30,70 @@ export default function HomeScreen({ navigation }) {
   const [weight, setWeight] = useState('');
   const [weightHistory, setWeightHistory] = useState([]);
 
-
-
   useEffect(() => {
-    registerBackgroundTask();
+    loadWeightHistory();
+    loadCalorieResult()
+    getStepsForToday();
   }, []);
 
-  useEffect(() => {
-    // AppState değişikliklerini dinle
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+  // Adımları kontrol et ve gerekirse sıfırla
+  const getStepsForToday = async () => {
 
+    try {
+      const currentDate = new Date();
+      const currentDay = currentDate.toISOString().split('T')[0];
+
+      const storedData = await AsyncStorage.getItem('stepData');
+      console.log('storedData', storedData);
+      if (!storedData) return 0;
+
+      const parsedData = JSON.parse(storedData);
+      const storedDay = parsedData.date ? parsedData.date.split('T')[0] : null;
+
+      // Eğer kayıtlı gün bugüne eşitse, adımları döndür
+      if (storedDay === currentDay) {
+        setSteps(parsedData.steps);
+        return parsedData.steps || 0;
+      }
+
+      // Gün farklıysa 0 döndür
+      return 0;
+    } catch (error) {
+      console.error('Adım sayısını alırken hata:', error);
+      return 0;
+    }
+  };
+
+
+  // useEffect(() => {
+  //   let subscription;
+
+  //   const fetchSteps = async () => {
+  //     const isAvailable = await Pedometer.isAvailableAsync();
+  //     console.log('isAvailable', isAvailable);
+  //     if (!isAvailable) {
+  //       console.log('Pedometer kullanılamıyor.');
+  //       return;
+  //     }
+
+  //     subscription = Pedometer.watchStepCount(async result => {
+  //       console.log(result.steps)
+  //       await updateSteps(result.steps);
+  //     });
+  //   };
+  //   fetchSteps();
+  //   return () => subscription.remove();
+  // }, []);
+
+
+  // AppState değişikliklerini dinle
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        try {
-          console.log('AppState değişti');
-          const storedSteps = await AsyncStorage.getItem('dailySteps');
-          if (storedSteps) {
-            const parsedSteps = parseInt(storedSteps);
-            console.log('parsedSteps', parsedSteps);
-            setSteps(parsedSteps);
-            setCalories(Math.floor(parsedSteps * 0.04));
-          }
-        } catch (error) {
-          console.error('Adım sayısı yüklenirken hata:', error);
-        }
+        await checkAndUpdateSteps();
       }
       appState.current = nextAppState;
     });
@@ -62,30 +103,19 @@ export default function HomeScreen({ navigation }) {
     };
   }, []);
 
-
-
-
+  // Tab focus değişikliklerini dinle
   useFocusEffect(
     React.useCallback(() => {
-      // Tab aktifken event'i dinle
+      getStepsForToday();
 
-      const loadLatestSteps = async () => {
-        try {
-          const storedSteps = await AsyncStorage.getItem('dailySteps');
-          if (storedSteps) {
-            const parsedSteps = parseInt(storedSteps);
-            setSteps(parsedSteps);
-            setCalories(Math.floor(parsedSteps * 0.04));
-          }
-        } catch (error) {
-          console.error('Adım sayısı yüklenirken hata:', error);
-        }
-      };
-
-      loadLatestSteps();
-
-      const subscription = EventEmitter.addListener('STEPS_UPDATED', (newSteps) => {
+      const subscription = EventEmitter.addListener('STEPS_UPDATED', async (newSteps) => {
         console.log('STEPS_UPDATED eventi alındı', newSteps);
+        // Yeni adımları tarihle birlikte kaydet
+        const currentDate = new Date();
+        await AsyncStorage.setItem('stepData', JSON.stringify({
+          steps: newSteps,
+          date: currentDate.toISOString()
+        }));
         setSteps(newSteps);
         setCalories(Math.floor(newSteps * 0.04));
       });
@@ -97,21 +127,22 @@ export default function HomeScreen({ navigation }) {
   // Kalori sonuçlarını yükleme fonksiyonu tab navigator sayfa değiştiğinde unmount olmadığı için  bu şekilde yapıyoruz ya da useEffect ile yapabiliriz navigation.addListener ile yapabiliriz.
   useFocusEffect(
     React.useCallback(() => {
-      const loadCalorieResult = async () => {
-        try {
-          const result = await AsyncStorage.getItem('calorieResult');
-          if (result) {
-            setCalorieResult(JSON.parse(result));
-          }
-        } catch (error) {
-          console.error('Kalori sonuçları yüklenemedi:', error);
-        }
-      };
-
+      loadWeightHistory();
       loadCalorieResult();
     }, []) // dependency array
   );
 
+
+  const loadCalorieResult = async () => {
+    try {
+      const result = await AsyncStorage.getItem('calorieResult');
+      if (result) {
+        setCalorieResult(JSON.parse(result));
+      }
+    } catch (error) {
+      console.error('Kalori sonuçları yüklenemedi:', error);
+    }
+  };
 
   const [isPedometerAvailable, setIsPedometerAvailable] = useState('checking');
 
@@ -243,8 +274,6 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.contentContainer} style={styles.container}>
-      <Text style={styles.title}>Fitness Takibi</Text>
-
       {/* Adım ve Kalori Kartları */}
       <View style={styles.row}>
         <View style={styles.card}>
@@ -340,6 +369,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
       )}
+        <WeightLossTip />
     </ScrollView>
   );
 }

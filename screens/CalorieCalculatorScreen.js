@@ -88,7 +88,6 @@ export default function CalorieCalculatorScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <Button title="deneme" onPress={deneme} />
 
         <Text style={styles.label}>Yaş</Text>
         <TextInput

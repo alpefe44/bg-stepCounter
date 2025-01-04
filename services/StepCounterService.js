@@ -4,9 +4,13 @@ import * as Notifications from 'expo-notifications';
 import { Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EventEmitter from '../utils/EventEmitter'; // EventEmitter'ı eklemeyi unutmayın
+import { Platform } from 'react-native';
 
 const STEP_COUNTER_TASK = 'STEP_COUNTER_TASK';
 const NOTIFICATION_ID = 'step-counter-notification';
+
+let lastStepCount = 0; // Son adım sayısını tutacak değişken
+console.log('lastStepCount', lastStepCount);
 
 TaskManager.defineTask(STEP_COUNTER_TASK, async () => {
   try {
@@ -17,23 +21,31 @@ TaskManager.defineTask(STEP_COUNTER_TASK, async () => {
       return BackgroundFetch.Result.Failed;
     }
 
+    // Kayıtlı adım verilerini al
+    const storedData = await AsyncStorage.getItem('stepData');
+    if (storedData) {
+      const { steps } = JSON.parse(storedData);
+      lastStepCount = steps;
+    }
+
     // Adım sayacını başlat
     const subscription = Pedometer.watchStepCount(async result => {
-      const steps = result.steps;
-      console.log('steps', steps);
+      const currentSteps = result.steps;
+      const totalSteps = lastStepCount + currentSteps;
 
-      // AsyncStorage'a kaydet
-      await AsyncStorage.setItem('dailySteps', steps.toString());
+      // Yeni toplam adımları kaydet
+      await AsyncStorage.setItem('stepData', JSON.stringify({
+        steps: totalSteps,
+        date: new Date().toISOString(),
+      }));
 
-      // Event ile bildir (UI güncellemesi için)
-      EventEmitter.emit('STEPS_UPDATED', steps);
+      EventEmitter.emit('STEPS_UPDATED', totalSteps);
 
-
-      await Notifications.cancelScheduledNotificationAsync(NOTIFICATION_ID);
-      Notifications.scheduleNotificationAsync({
+      // Bildirimi güncelle
+      await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Günlük Adım Sayınız',
-          body: `Şu ana kadar ${steps} adım attınız`,
+          body: `Şu ana kadar ${totalSteps} adım attınız`,
         },
         identifier: NOTIFICATION_ID,
         trigger: null,
@@ -44,7 +56,6 @@ TaskManager.defineTask(STEP_COUNTER_TASK, async () => {
     return () => {
       subscription && subscription.remove();
     };
-
   } catch (error) {
     console.error('Background task error:', error);
     return BackgroundFetch.Result.Failed;
@@ -79,13 +90,44 @@ export const registerBackgroundTask = async () => {
       throw new Error('Bildirim izni alınamadı');
     }
 
+    // BackgroundFetch ayarlarını güncelle
     await BackgroundFetch.registerTaskAsync(STEP_COUNTER_TASK, {
-      minimumInterval: 1, // minimum süreyi 1 dakikaya ayarladık
-      stopOnTerminate: false,
-      startOnBoot: true,
+      minimumInterval: 60, // 1 dakika (saniye cinsinden)
+      stopOnTerminate: false, // Uygulama kapatıldığında devam et
+      startOnBoot: true, // Cihaz yeniden başlatıldığında başlat
+      foregroundService: { // Android için foreground service ekle
+        notificationTitle: "Adım Sayacı",
+        notificationBody: "Adımlarınız sayılıyor",
+        notificationColor: "#4630EB"
+      }
     });
+
+    // Android için foreground service'i başlat
+    if (Platform.OS === 'android') {
+      await BackgroundFetch.setMinimumIntervalAsync(60); // 1 dakika
+    }
+
     console.log('Görev başarıyla kaydedildi.');
+
   } catch (err) {
     console.error('Task registration failed:', err);
+  }
+};
+
+// Uygulama başlatıldığında bu fonksiyonu çağırın
+export const startStepTracking = async () => {
+  try {
+    await registerBackgroundTask();
+    
+    // Mevcut adım verilerini al
+    const storedData = await AsyncStorage.getItem('stepData');
+    if (storedData) {
+      const { steps } = JSON.parse(storedData);
+      lastStepCount = steps;
+    }
+
+    console.log('Adım takibi başlatıldı');
+  } catch (error) {
+    console.error('Adım takibi başlatılırken hata:', error);
   }
 };
