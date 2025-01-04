@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Device from 'expo-device';
 import * as BackgroundFetch from 'expo-background-fetch';
-import { Alert, AppState, Platform, Dimensions } from 'react-native';
+import { Alert, AppState, Platform, Dimensions, Pressable } from 'react-native';
 import { Pedometer } from 'expo-sensors';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
@@ -272,25 +272,35 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+
+  const deleteStepData = async () => {
+    await AsyncStorage.removeItem('stepData');
+    setSteps(0);
+    setCalories(0);
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.contentContainer} style={styles.container}>
       {/* Adım ve Kalori Kartları */}
       <View style={styles.row}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Günlük Adımlar</Text>
-          {isPedometerAvailable === 'false' ? (
-            <Text style={styles.errorText}>Adım sayar kullanılamıyor</Text>
-          ) : (
-            <CircularProgress
-              value={steps}
-              maxValue={10000}
-              radius={60}
-              progressValueColor={'#6c63ff'}
-              activeStrokeColor={'#6c63ff'}
-              inActiveStrokeColor={'#ddd'}
-            />
-          )}
+          <Pressable onLongPress={deleteStepData}>
+            <Text style={styles.cardTitle}>Günlük Adımlar</Text>
+            {isPedometerAvailable === 'false' ? (
+              <Text style={styles.errorText}>Adım sayar kullanılamıyor</Text>
+            ) : (
+              <CircularProgress
+                value={steps}
+                maxValue={10000}
+                radius={60}
+                progressValueColor={'#6c63ff'}
+                activeStrokeColor={'#6c63ff'}
+                inActiveStrokeColor={'#ddd'}
+              />
+            )}
+          </Pressable>
         </View>
+
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Kalori</Text>
@@ -352,25 +362,27 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      {calorieResult && (
-        <View style={[styles.card, styles.fullCard]}>
-          <Text style={styles.cardTitle}>Günlük Kalori İhtiyacı</Text>
-          <View style={styles.calorieItem}>
-            <Text style={styles.calorieLabel}>Kilo Koruma:</Text>
-            <Text style={styles.calorieValue}>{calorieResult.maintenance} kcal</Text>
+      {
+        calorieResult && (
+          <View style={[styles.card, styles.fullCard]}>
+            <Text style={styles.cardTitle}>Günlük Kalori İhtiyacı</Text>
+            <View style={styles.calorieItem}>
+              <Text style={styles.calorieLabel}>Kilo Koruma:</Text>
+              <Text style={styles.calorieValue}>{calorieResult.maintenance} kcal</Text>
+            </View>
+            <View style={styles.calorieItem}>
+              <Text style={styles.calorieLabel}>Kilo Verme:</Text>
+              <Text style={styles.calorieValue}>{calorieResult.weightLoss} kcal</Text>
+            </View>
+            <View style={styles.calorieItem}>
+              <Text style={styles.calorieLabel}>Kilo Alma:</Text>
+              <Text style={styles.calorieValue}>{calorieResult.weightGain} kcal</Text>
+            </View>
           </View>
-          <View style={styles.calorieItem}>
-            <Text style={styles.calorieLabel}>Kilo Verme:</Text>
-            <Text style={styles.calorieValue}>{calorieResult.weightLoss} kcal</Text>
-          </View>
-          <View style={styles.calorieItem}>
-            <Text style={styles.calorieLabel}>Kilo Alma:</Text>
-            <Text style={styles.calorieValue}>{calorieResult.weightGain} kcal</Text>
-          </View>
-        </View>
-      )}
-        <WeightLossTip />
-    </ScrollView>
+        )
+      }
+      <WeightLossTip />
+    </ScrollView >
   );
 }
 
