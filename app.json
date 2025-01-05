@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "fitnessapp",
-    "slug": "fitnessapp",
+    "name": "Health Care",
+    "slug": "healthcare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -51,14 +51,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.alpefe7.fitnessapp"
+      "package": "com.alpefe7.healthcare"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "bde9a309-42a0-48d7-80ab-34497f20013d"
+        "projectId": "c7cecd32-b81e-4bfb-9451-9b0a2f53f286"
       }
     }
   }

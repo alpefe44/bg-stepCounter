@@ -3,7 +3,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import { Pedometer } from 'expo-sensors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import EventEmitter from '../utils/EventEmitter'; // EventEmitter'ı eklemeyi unutmayın
-import { Platform } from 'react-native';
+
 
 const STEP_COUNTER_TASK = 'STEP_COUNTER_TASK';
 
@@ -19,34 +19,60 @@ const startPedometerTracking = async () => {
       return;
     }
 
+    // Önce mevcut adım verilerini al
+    const storedData = await AsyncStorage.getItem('stepData');
+    if (storedData) {
+      const { steps, lastPedometerSteps } = JSON.parse(storedData);
+      lastStepCount = lastPedometerSteps || 0;
+      console.log('Son kaydedilen adım sayısı:', lastStepCount);
+    }
+
     const subscription = Pedometer.watchStepCount(async result => {
       const currentSteps = result.steps;
-      
+
+      // İlk okuma ise fark hesaplama
+      if (lastStepCount === 0) {
+        lastStepCount = currentSteps;
+        return;
+      }
+
       // Adım farkını hesapla
       const stepDifference = currentSteps - lastStepCount;
-      lastStepCount = currentSteps;
+      console.log('Mevcut adımlar:', currentSteps, 'Son adımlar:', lastStepCount, 'Fark:', stepDifference);
 
       // Mevcut toplam adımları al
       const storedData = await AsyncStorage.getItem('stepData');
       let totalSteps = 0;
-      
+
       if (storedData) {
         const { steps } = JSON.parse(storedData);
         totalSteps = steps;
       }
 
-      // Yeni toplam adımları hesapla
-      const newTotalSteps = totalSteps + stepDifference;
+      // Yeni toplam adımları hesapla (sadece pozitif fark varsa)
+      if (stepDifference > 0) {
+        let newTotalSteps = totalSteps + stepDifference;
 
-      console.log('Yeni adımlar:', stepDifference, 'Toplam:', newTotalSteps);
+        // 10000 adımı geçerse sıfırla
+        if (newTotalSteps >= 10000) {
+          newTotalSteps = 0;
+          // Başarı bildirimi gönder
+          EventEmitter.emit('STEPS_GOAL_REACHED', newTotalSteps);
+        }
 
-      // Adımları güncelle
-      await AsyncStorage.setItem('stepData', JSON.stringify({
-        steps: newTotalSteps,
-        date: new Date().toISOString(),
-      }));
+        console.log('Yeni adımlar:', stepDifference, 'Toplam:', newTotalSteps);
 
-      EventEmitter.emit('STEPS_UPDATED', newTotalSteps);
+        // Adımları güncelle
+        await AsyncStorage.setItem('stepData', JSON.stringify({
+          steps: newTotalSteps,
+          lastPedometerSteps: currentSteps,
+          date: new Date().toISOString(),
+        }));
+
+        EventEmitter.emit('STEPS_UPDATED', newTotalSteps);
+      }
+
+      lastStepCount = currentSteps;
     });
 
     return subscription;

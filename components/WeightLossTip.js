@@ -1,27 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, Dimensions, StyleSheet } from 'react-native';
 
 const WeightLossTip = () => {
     const [activeIndex, setActiveIndex] = useState(0);
+    const [displayedTips, setDisplayedTips] = useState([]);
     const scrollViewRef = useRef(null);
     const screenWidth = Dimensions.get('window').width;
-    const cardWidth = screenWidth - 100; // Kenarlardan 40'ar pixel boşluk
+    const cardWidth = screenWidth - 97;
 
-    const handleScroll = (event) => {
-        const contentOffset = event.nativeEvent.contentOffset.x;
-        const index = Math.round(contentOffset / cardWidth);
-        setActiveIndex(index);
-
-        // Son karttan sonra daha fazla kaydırmayı engelle
-        // if (index >= weightLossTips.length) {
-        //     scrollViewRef.current?.scrollTo({
-        //         x: cardWidth * (weightLossTips.length - 1),
-        //         animated: true
-        //     });
-        // }
-    };
-
-    const weightLossTips = [
+    const allWeightLossTips = [
         {
             id: 1,
             title: "Su Tüketimi",
@@ -51,8 +38,170 @@ const WeightLossTip = () => {
             title: "Uyku Düzeni",
             description: "Günde 7-8 saat uyuyun. Yetersiz uyku, kilo vermeyi zorlaştırır ve iştahı artırır.",
             color: "#6C63FF"
+        },
+        {
+            id: 6,
+            title: "Ara Öğünler",
+            description: "Sağlıklı ara öğünlerle metabolizmanızı aktif tutun. Meyve ve kuruyemişler iyi birer seçenek.",
+            color: "#FF9A8B"
+        },
+        {
+            id: 7,
+            title: "Lifli Gıdalar",
+            description: "Sebze, meyve ve tam tahıllı ürünler tüketin. Lif, uzun süre tok tutar.",
+            color: "#88D8B0"
+        },
+        {
+            id: 8,
+            title: "Şeker Kontrolü",
+            description: "İşlenmiş şeker tüketimini azaltın. Tatlı isteğinizi meyvelerle giderin.",
+            color: "#FF6B6B"
+        },
+        {
+            id: 9,
+            title: "Planlı Beslenme",
+            description: "Öğünlerinizi önceden planlayın. Bu, sağlıksız atıştırmalıkları engeller.",
+            color: "#4ECDC4"
+        },
+        {
+            id: 10,
+            title: "Stres Yönetimi",
+            description: "Stres, kilo almaya neden olabilir. Meditasyon ve yoga deneyin.",
+            color: "#45B7D1"
+        },
+        {
+            id: 11,
+            title: "Kahvaltı Alışkanlığı",
+            description: "Güne sağlıklı bir kahvaltıyla başlayın. Metabolizmanızı hızlandırır.",
+            color: "#96CEB4"
+        },
+        {
+            id: 12,
+            title: "Yemek Günlüğü",
+            description: "Ne yediğinizi not edin. Bu, kalori alımınızı kontrol etmenize yardımcı olur.",
+            color: "#6C63FF"
+        },
+        {
+            id: 13,
+            title: "Alkol Sınırlaması",
+            description: "Alkol tüketimini azaltın. Alkol boş kalori kaynağıdır ve metabolizmayı yavaşlatır.",
+            color: "#FF9A8B"
+        },
+        {
+            id: 14,
+            title: "Düzenli Tartılma",
+            description: "Haftada bir kez aynı saatte tartılın. İlerlemenizi takip edin.",
+            color: "#88D8B0"
+        },
+        {
+            id: 15,
+            title: "Sosyal Destek",
+            description: "Aileniz ve arkadaşlarınızla hedeflerinizi paylaşın. Destek almak motivasyonunuzu artırır.",
+            color: "#FF6B6B"
+        },
+        {
+            id: 16,
+            title: "Yürüyüş Molası",
+            description: "Her saat başı 5 dakika yürüyüş yapın. Gün içinde hareket önemli.",
+            color: "#4ECDC4"
+        },
+        {
+            id: 17,
+            title: "Pişirme Yöntemi",
+            description: "Kızartma yerine ızgara, haşlama veya fırınlama tercih edin.",
+            color: "#45B7D1"
+        },
+        {
+            id: 18,
+            title: "Sebze Çeşitliliği",
+            description: "Her gün farklı renklerde sebzeler tüketin. Her renk farklı besin değeri taşır.",
+            color: "#96CEB4"
+        },
+        {
+            id: 19,
+            title: "Mindful Eating",
+            description: "Yemek yerken TV izlemeyin. Yemeğinize odaklanın ve tadını çıkarın.",
+            color: "#6C63FF"
+        },
+        {
+            id: 20,
+            title: "Ev Yemekleri",
+            description: "Dışarıda yemek yerine evde pişirin. Kalori kontrolü daha kolay olur.",
+            color: "#FF9A8B"
+        },
+        {
+            id: 21,
+            title: "Diyet Değil Yaşam Tarzı",
+            description: "Kısa süreli diyetler yerine kalıcı beslenme alışkanlıkları edinin.",
+            color: "#88D8B0"
+        },
+        {
+            id: 22,
+            title: "Karbonhidrat Seçimi",
+            description: "Rafine karbonhidratlar yerine tam tahıllı ürünleri tercih edin.",
+            color: "#FF6B6B"
+        },
+        {
+            id: 23,
+            title: "Yağ Kontrolü",
+            description: "Sağlıklı yağları tercih edin: zeytinyağı, avokado, kuruyemişler.",
+            color: "#4ECDC4"
+        },
+        {
+            id: 24,
+            title: "Açlık-Tokluk Dengesi",
+            description: "Açlık sinyallerinizi dinleyin. Tok hissettiğinizde durun.",
+            color: "#45B7D1"
+        },
+        {
+            id: 25,
+            title: "Kas Çalışması",
+            description: "Haftada 2-3 kez kuvvet egzersizleri yapın. Kas kütlesi metabolizmayı hızlandırır.",
+            color: "#96CEB4"
+        },
+        {
+            id: 26,
+            title: "Beslenme Etiketi",
+            description: "Paketli ürünlerin besin değerlerini okuyun ve karşılaştırın.",
+            color: "#6C63FF"
+        },
+        {
+            id: 27,
+            title: "Probiyotik Tüketimi",
+            description: "Yoğurt ve kefir gibi probiyotik gıdalar metabolizmayı destekler.",
+            color: "#FF9A8B"
+        },
+        {
+            id: 28,
+            title: "Denge Prensibi",
+            description: "Tüm besin gruplarından dengeli şekilde tüketin.",
+            color: "#88D8B0"
+        },
+        {
+            id: 29,
+            title: "Düzenli Öğün",
+            description: "Öğün atlamamaya özen gösterin. Metabolizmanızı düzenli tutun.",
+            color: "#FF6B6B"
+        },
+        {
+            id: 30,
+            title: "Hedef Belirleme",
+            description: "Gerçekçi ve ulaşılabilir kilo hedefleri belirleyin.",
+            color: "#4ECDC4"
         }
     ];
+
+    useEffect(() => {
+        // Rastgele 5 ipucu seç
+        const shuffled = [...allWeightLossTips].sort(() => 0.5 - Math.random());
+        setDisplayedTips(shuffled.slice(0, 5));
+    }, []);
+
+    const handleScroll = (event) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffset / cardWidth);
+        setActiveIndex(index);
+    };
 
     return (
         <View style={[styles.card, styles.fullCard]}>
@@ -66,7 +215,7 @@ const WeightLossTip = () => {
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollContainer}
             >
-                {weightLossTips.map((tip, index) => (
+                {displayedTips.map((tip, index) => (
                     <View
                         key={tip.id}
                         style={[
@@ -80,7 +229,7 @@ const WeightLossTip = () => {
                 ))}
             </ScrollView>
             <View style={styles.pagination}>
-                {weightLossTips.map((_, index) => (
+                {displayedTips.map((_, index) => (
                     <View
                         key={index}
                         style={[
@@ -114,7 +263,6 @@ const styles = StyleSheet.create({
     },
     scrollContainer: {
         alignItems: 'center',
-        paddingHorizontal: 20,
     },
     cardTitle: {
         fontSize: 16,
@@ -125,10 +273,8 @@ const styles = StyleSheet.create({
     },
     tipCard: {
         padding: 20,
+        marginHorizontal: 8,
         borderRadius: 15,
-        marginRight: 20,
-        marginVertical: 10,
-        minHeight: 150,
         justifyContent: 'center',
         alignItems: 'center', // İçeriği ortala
     },

@@ -11,6 +11,7 @@ import { registerBackgroundTask, updateSteps } from '../services/StepCounterServ
 import WeightLossTip from '../components/WeightLossTip'
 import EventEmitter from '../utils/EventEmitter';
 import { AdEventType, InterstitialAd, TestIds } from 'react-native-google-mobile-ads';
+import { AntDesign } from '@expo/vector-icons';
 
 const interstitial = InterstitialAd.createForAdRequest(TestIds.INTERSTITIAL, {
   keywords: ['fashion', 'clothing'],
@@ -74,6 +75,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   useEffect(() => {
+    loadWeightHistory();
     loadCalorieResult()
     getStepsForToday();
   }, []);
@@ -145,6 +147,19 @@ export default function HomeScreen({ navigation }) {
     };
   }, []);
 
+
+  useEffect(() => {
+    // Hedef tamamlandığında bildirimi dinle
+    const goalSubscription = EventEmitter.addListener('STEPS_GOAL_REACHED', (newSteps) => {
+      console.log('Hedef tamamlandı');
+      setSteps(newSteps);
+    });
+
+    return () => {
+      goalSubscription.remove();
+    };
+  }, []);
+
   // Tab focus değişikliklerini dinle
   useFocusEffect(
     React.useCallback(() => {
@@ -186,72 +201,6 @@ export default function HomeScreen({ navigation }) {
   };
 
   const [isPedometerAvailable, setIsPedometerAvailable] = useState('checking');
-
-  // useEffect(() => {
-  //   let subscription;
-
-  //   const requestPermissions = async () => {
-
-  //     if (Platform.OS === 'android') {
-
-  //       const { status } = await Pedometer.requestPermissionsAsync();
-
-  //       if (status !== 'granted') {
-
-  //         Alert.alert(
-
-  //           'İzin Gerekli',
-
-  //           'Adım sayacının çalışması için fiziksel aktivite izni gereklidir.',
-
-  //           [{ text: 'Tamam' }]
-
-  //         );
-
-  //         setIsPedometerAvailable('false');
-
-  //         return false;
-
-  //       }
-
-  //     }
-
-  //     return true;
-
-  //   };
-
-  //   const subscribe = async () => {
-  //     try {
-  //       const hasPermission = await requestPermissions();
-
-  //       if (!hasPermission) return;
-
-  //       const isAvailable = await Pedometer.isAvailableAsync();
-  //       console.log('isAvailable', isAvailable);
-  //       setIsPedometerAvailable(String(isAvailable));
-
-  //       if (isAvailable) {
-  //         subscription = Pedometer.watchStepCount(result => {
-  //           console.log('result', result);
-  //           setSteps(result.steps);
-  //           AsyncStorage.setItem('dailySteps', result.steps.toString());
-  //           setCalories(Math.floor(result.steps * 0.04));
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error('Pedometer error:', error);
-  //       setIsPedometerAvailable('false');
-  //     }
-  //   };
-
-  //   subscribe();
-
-  //   return () => {
-  //     if (subscription) {
-  //       subscription.remove();
-  //     }
-  //   };
-  // }, []);
 
   // Kronometre fonksiyonları
   const startTimer = () => {
@@ -311,6 +260,13 @@ export default function HomeScreen({ navigation }) {
         console.error('Ağırlık kaydedilemedi:', error);
       }
     }
+  };
+
+
+  const deleteWeight = async (weight) => {
+    const updatedHistory = weightHistory.filter(entry => entry.weight !== weight);
+    await AsyncStorage.setItem('weightHistory', JSON.stringify(updatedHistory));
+    setWeightHistory(updatedHistory);
   };
 
   return (
@@ -385,8 +341,11 @@ export default function HomeScreen({ navigation }) {
         </View>
         <View style={styles.weightHistory}>
           {weightHistory.slice(0, 3).map((entry, index) => (
-            <View key={index} style={styles.historyItem}>
-              <Text style={styles.weightText}>{entry.weight} kg</Text>
+            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} >
+              <View style={styles.historyItem}>
+                <AntDesign onPress={() => deleteWeight(entry.weight)} name="minuscircle" size={18} color="red" />
+                <Text style={styles.weightText}>{entry.weight} kg</Text>
+              </View>
               <Text style={styles.dateText}>{entry.date}</Text>
             </View>
           ))}
@@ -509,6 +468,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    gap: 15
   },
   weightText: {
     fontSize: 16,
